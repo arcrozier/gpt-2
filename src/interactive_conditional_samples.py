@@ -6,7 +6,7 @@ import os
 import numpy as np
 import tensorflow.compat.v1 as tf
 
-import model, sample, encoder
+from . import model, sample, encoder
 
 def interact_model(
     model_name='117M',
