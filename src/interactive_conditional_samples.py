@@ -4,9 +4,9 @@ import fire
 import json
 import os
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-import model, sample, encoder
+from . import model, sample, encoder
 
 def interact_model(
     model_name='124M',
@@ -16,8 +16,7 @@ def interact_model(
     length=None,
     temperature=1,
     top_k=0,
-    top_p=1,
-    models_dir='models',
+    top_p=0.0
 ):
     """
     Interactively run the model
@@ -36,8 +35,8 @@ def interact_model(
      considered for each step (token), resulting in deterministic completions,
      while 40 means 40 words are considered at each step. 0 (default) is a
      special setting meaning no restrictions. 40 generally is a good value.
-     :models_dir : path to parent folder containing model subfolders
-     (i.e. contains the <model_name> folder)
+    :top_p=0.0 : Float value controlling diversity. Implements nucleus sampling,
+     overriding top_k if set to a value > 0. A good setting is 0.9.
     """
     models_dir = os.path.expanduser(os.path.expandvars(models_dir))
     if batch_size is None:
@@ -46,13 +45,15 @@ def interact_model(
 
     enc = encoder.get_encoder(model_name, models_dir)
     hparams = model.default_hparams()
-    with open(os.path.join(models_dir, model_name, 'hparams.json')) as f:
-        hparams.override_from_dict(json.load(f))
+    with open(os.path.join('models', model_name, 'hparams.json')) as f:
+        dict2 = json.load(f)
+        for key, value in hparams.items():
+            hparams[key] = dict2[key]
 
     if length is None:
-        length = hparams.n_ctx // 2
-    elif length > hparams.n_ctx:
-        raise ValueError("Can't get samples longer than window size: %s" % hparams.n_ctx)
+        length = hparams['n_ctx'] // 2
+    elif length > hparams['n_ctx']:
+        raise ValueError("Can't get samples longer than window size: %s" % hparams['n_ctx'])
 
     with tf.Session(graph=tf.Graph()) as sess:
         context = tf.placeholder(tf.int32, [batch_size, None])
@@ -89,4 +90,3 @@ def interact_model(
 
 if __name__ == '__main__':
     fire.Fire(interact_model)
-
